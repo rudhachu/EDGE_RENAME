@@ -35,26 +35,33 @@ async def run_async_ffmpeg(cmd: list) -> tuple:
     stdout, stderr = await process.communicate()
     return process.returncode, stdout.decode('utf-8', errors='ignore'), stderr.decode('utf-8', errors='ignore')
 
+# Global task cancellation tracking
+TASK_CANCELLATION = {}
+
 def convert_time(seconds):
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
     return f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
 
-async def progress_for_pyrogram(current, total, ud_type, message, start):
+async def progress_for_pyrogram(current, total, ud_type, message, start, task_id=None):
+    if task_id and TASK_CANCELLATION.get(task_id):
+        from pyrogram import StopTransmission
+        raise StopTransmission
+
     now = time.time()
     diff = now - start
-    if round(diff % 5.00) == 0 or current == total:
+    if round(diff % 4.00) == 0 or current == total:
         percentage = current * 100 / total
-        speed = current / diff
+        speed = current / (diff or 0.001)
         elapsed_time = round(diff) * 1000
-        time_to_completion = round((total - current) / speed) * 1000
+        time_to_completion = round((total - current) / (speed or 0.001)) * 1000
         estimated_total_time = elapsed_time + time_to_completion
 
         elapsed_time = TimeFormatter(milliseconds=elapsed_time)
         estimated_total_time = TimeFormatter(milliseconds=estimated_total_time)
-        time_left = (total - current) / speed
-        elapsed_minutes = int(diff / 60)  # Calculate elapsed minutes
-        elapsed_seconds = int(diff % 60)  # Calculate elapsed seconds
+        time_left = (total - current) / (speed or 0.001)
+        elapsed_minutes = int(diff / 60)
+        elapsed_seconds = int(diff % 60)
 
         num_boxes = 10
         completed_boxes = int(percentage / (100 / num_boxes))
@@ -70,12 +77,14 @@ async def progress_for_pyrogram(current, total, ud_type, message, start):
         text += f"⚡️ Speed: {humanbytes(speed)}/s\n"
         text += f"⌛ ETA: {convert_time(time_left)}\n"
         text += f"⏱️ Time elapsed: {elapsed_minutes}m {elapsed_seconds}s"
+        
+        cancel_cb = f"cancel_{task_id}" if task_id else "close"
         try:
             await message.edit(
                 text=text,
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ 𝙲𝙰𝙽𝙲𝙴𝙻 ✖️", callback_data="close")]])
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ 𝙲𝙰𝙽𝙲𝙴𝙻 ✖️", callback_data=cancel_cb)]])
             )
-        except:
+        except Exception:
             pass
 
 

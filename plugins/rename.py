@@ -20,9 +20,11 @@ from helper.utils import (
     humanbytes, 
     split_name_and_ext, 
     format_custom_filename, 
-    run_async_ffmpeg
+    run_async_ffmpeg,
+    TASK_CANCELLATION
 )
 from helper.database import db
+from pyrogram import StopTransmission
 
 
 @Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
@@ -84,6 +86,17 @@ async def refunc(client, message):
         )
 
 
+@Client.on_callback_query(filters.regex(r"^cancel_"))
+async def cancel_task_callback(bot, update):
+    task_id = update.data.split("_", 1)[1]
+    TASK_CANCELLATION[task_id] = True
+    await update.answer("🛑 Cancelling process...", show_alert=True)
+    try:
+        await update.message.edit("🛑 **Process cancelled by user.**")
+    except Exception:
+        pass
+
+
 @Client.on_callback_query(filters.regex(r"^upload_"))
 async def doc(bot, update):
     user_id = update.from_user.id
@@ -102,8 +115,9 @@ async def doc(bot, update):
     # Safely apply prefix/suffix without mangling extensions
     new_filename = format_custom_filename(base_name, prefix=prefix, suffix=suffix)
 
-    # Create isolated sandboxed directory for this specific task
+    # Create isolated sandboxed directory and cancellation tracking for this task
     task_id = uuid.uuid4().hex[:8]
+    TASK_CANCELLATION[task_id] = False
     task_dir = Path(f"downloads/task_{task_id}")
     task_dir.mkdir(parents=True, exist_ok=True)
     
@@ -119,14 +133,18 @@ async def doc(bot, update):
             message=file, 
             file_name=str(file_path), 
             progress=progress_for_pyrogram,
-            progress_args=("`Download Started....`", ms, time.time())
+            progress_args=("`Download Started....`", ms, time.time(), task_id)
         )
+        
+        if TASK_CANCELLATION.get(task_id):
+            return await ms.edit("🛑 **Process was cancelled.**")
+
         if not path or not file_path.exists():
             return await ms.edit("❌ Failed to download media file.")
 
         # Check and apply metadata
         user_metadata_enabled = await db.get_metadata(user_id)
-        if user_metadata_enabled == "On":
+        if user_metadata_enabled == "On" and not TASK_CANCELLATION.get(task_id):
             title = await db.get_title(user_id)
             author = await db.get_author(user_id)
             artist = await db.get_artist(user_id)
@@ -167,6 +185,9 @@ async def doc(bot, update):
                 shutil.move(str(temp_output_file), str(file_path))
             else:
                 print(f"FFmpeg error: {stderr}")
+
+        if TASK_CANCELLATION.get(task_id):
+            return await ms.edit("🛑 **Process was cancelled.**")
 
         # Extract duration
         duration = 0
@@ -226,7 +247,7 @@ async def doc(bot, update):
                 thumb=ph_path,
                 caption=caption,
                 progress=progress_for_pyrogram,
-                progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time())
+                progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time(), task_id)
             )
         elif upload_type == "video":
             uploaded_message = await bot.send_video(
@@ -236,7 +257,7 @@ async def doc(bot, update):
                 thumb=ph_path,
                 duration=duration,
                 progress=progress_for_pyrogram,
-                progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time())
+                progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time(), task_id)
             )
         elif upload_type == "audio":
             uploaded_message = await bot.send_audio(
@@ -246,11 +267,11 @@ async def doc(bot, update):
                 thumb=ph_path,
                 duration=duration,
                 progress=progress_for_pyrogram,
-                progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time())
+                progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time(), task_id)
             )
 
         # Handle dump channel copies
-        if uploaded_message:
+        if uploaded_message and not TASK_CANCELLATION.get(task_id):
             user_dump = await db.get_dump_channel(user_id)
             if user_dump:
                 try:
@@ -276,8 +297,20 @@ async def doc(bot, update):
 
         await ms.delete()
 
+    except StopTransmission:
+        try:
+            await ms.edit("🛑 **Process was successfully cancelled.**")
+        except Exception:
+            pass
     except Exception as e:
-        await ms.edit(f"❌ **Error:** `{e}`")
+        if TASK_CANCELLATION.get(task_id):
+            try:
+                await ms.edit("🛑 **Process was cancelled.**")
+            except Exception:
+                pass
+        else:
+            await ms.edit(f"❌ **Error:** `{e}`")
     finally:
-        # Guarantee full sandbox cleanup
+        # Cleanup cancellation flag and sandbox
+        TASK_CANCELLATION.pop(task_id, None)
         shutil.rmtree(task_dir, ignore_errors=True)
