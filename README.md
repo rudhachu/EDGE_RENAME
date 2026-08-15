@@ -25,7 +25,7 @@
   </a>
 </p>
 
-![github card](https://github-readme-stats.vercel.app/api/pin/?username=GeekLuffy&repo=EDGE_RENAME&theme=dark)
+[![GitHub Card](https://opengraph.githubassets.com/1/GeekLuffy/EDGE_RENAME)](https://github.com/GeekLuffy/EDGE_RENAME)
 
 </div>
 
@@ -35,7 +35,10 @@
 
 **EDGE Rename Bot** is a self-hostable Telegram bot built with [Pyrogram](https://pyrogram.org) that lets users rename any file sent to it — with full control over:
 
+- Interactive `/settings` dashboard for 1-tap preference toggling
 - Output file type (Document / Video / Audio)
+- Real-time task cancellation engine (instantly stop downloads/uploads)
+- Non-blocking async FFmpeg remuxing & metadata injection
 - Custom caption with dynamic variables
 - Custom thumbnail
 - Prefix & suffix injection
@@ -51,10 +54,13 @@ No more clunky desktop tools. Just send the file, type the new name, done.
 | Feature | Description |
 |---|---|
 | 📁 **Rename Any File** | Supports documents, videos, and audio up to 2GB |
+| ⚙️ **Interactive Dashboard** | Control all bot settings with `/settings` menu |
+| 🛑 **Real-Time Cancel** | Abort active downloads/uploads instantly |
+| ⚡ **Async FFmpeg** | Non-blocking background remuxing without bot lag |
 | 🎥 **Choose Output Type** | Send as Document, Video, or Audio |
 | 🖼️ **Custom Thumbnail** | Set a persistent thumbnail for all uploads |
 | 📝 **Custom Caption** | Dynamic captions with `{filename}`, `{filesize}`, `{duration}` |
-| 🏷️ **Prefix & Suffix** | Auto-inject tags around filenames |
+| 🏷️ **Prefix & Suffix** | Auto-inject tags around filenames safely |
 | 🎬 **Metadata Editing** | Embed title, author, artist, video/audio/subtitle titles via ffmpeg |
 | 📤 **Dump Channel** | Auto-forward renamed files to your own channel |
 | 🔒 **Force Subscribe** | Restrict bot to channel members only |
@@ -68,7 +74,7 @@ No more clunky desktop tools. Just send the file, type the new name, done.
 Choose your preferred platform:
 
 ### ☁️ Koyeb
-[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/Geekluffy/EDGE_RENAME&env[BOT_TOKEN]&env[API_ID]&env[API_HASH]&env[WEBHOOK]=True&env[ADMIN]&env[DB_URL]&env[DB_NAME]=pyro-botz&env[FORCE_SUB]&env[START_PIC]&env[LOG_CHANNEL]=You%20Dont%20Need%20LogChannel%20To%20Remove%20This%20Variable&run_command=python%20bot.py&branch=main&name=pyro-rename)
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&repository=github.com/Geekluffy/EDGE_RENAME&env[BOT_TOKEN]&env[API_ID]&env[API_HASH]&env[WEBHOOK]=True&env[ADMIN]&env[DB_URL]&env[DB_NAME]=EdgeRenameBot&env[FORCE_SUB]&env[START_PIC]&env[LOG_CHANNEL]=You%20Dont%20Need%20LogChannel%20To%20Remove%20This%20Variable&run_command=python%20bot.py&branch=main&name=pyro-rename)
 
 ### 🌐 Render
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/GeekLuffy/EDGE_RENAME)
@@ -110,7 +116,7 @@ python bot.py
 | `API_ID` | ✅ | Telegram App ID from [my.telegram.org](https://my.telegram.org) |
 | `API_HASH` | ✅ | Telegram App Hash from [my.telegram.org](https://my.telegram.org) |
 | `DB_URL` | ✅ | MongoDB connection string |
-| `DB_NAME` | ❌ | Database name (default: `Zoro`) |
+| `DB_NAME` | ❌ | Database name (default: `EdgeRenameBot`) |
 | `ADMIN` | ✅ | Space-separated Telegram user IDs with admin access |
 | `LOG_CHANNEL` | ❌ | Channel ID for bot logs (must start with `-100`) |
 | `DUMP_CHANNEL` | ❌ | Default dump channel for all renamed files |
@@ -118,6 +124,7 @@ python bot.py
 | `FORCE_SUB_2` | ❌ | Username of second force-subscribe channel (without `@`) |
 | `START_PIC` | ❌ | URL of start command media (image or video) |
 | `WEBHOOK` | ❌ | Set `True` if hosting on a web server (default: `True`) |
+| `PORT` | ❌ | Web server port for health checks (default: `8080`) |
 
 > ⚠️ **Note:** Server must have `ffmpeg` installed for metadata features to work.
 
@@ -126,7 +133,8 @@ python bot.py
 ## 🤖 Bot Commands
 
 ```
-/start        → Welcome message
+/start        → Welcome message & quick menu
+/settings     → Interactive settings dashboard
 /metadata     → Toggle metadata embedding on/off
 /settitle     → Set media title metadata
 /setauthor    → Set author metadata
@@ -162,15 +170,17 @@ python bot.py
 ```
 EDGE_RENAME/
 ├── bot.py                  # Entry point, Pyrogram client init
-├── config.py               # Config + text constants
+├── config.py               # Config + text constants + .env loader
 ├── route.py                # Aiohttp web server (for webhook mode)
-├── requirements.txt
+├── requirements.txt        # Dependencies (Pyrogram, Motor, Pillow, etc.)
+├── .env.example            # Environment variables template
 ├── Dockerfile
 ├── helper/
 │   ├── database.py         # MongoDB async operations (Motor)
-│   └── utils.py            # Progress bar, formatters, log sender
+│   └── utils.py            # Async FFmpeg, safe paths, progress & cancel
 └── plugins/
-    ├── rename.py           # Core rename + upload + metadata logic
+    ├── rename.py           # Core rename + upload + metadata + cancel logic
+    ├── settings.py         # /settings interactive dashboard
     ├── start_&_cb.py       # /start command + all callback handlers
     ├── metadata.py         # Metadata set commands
     ├── thumb_&_cap.py      # Thumbnail + caption commands
@@ -180,6 +190,7 @@ EDGE_RENAME/
     ├── Force_Sub.py        # Force subscribe gate
     └── antinsfw.py         # NSFW filename filter (optional)
 ```
+
 
 ---
 
