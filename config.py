@@ -1,28 +1,40 @@
 import re, os, time
+from dotenv import load_dotenv
+
+# Load environment variables from .env if present
+load_dotenv()
 
 id_pattern = re.compile(r'^.\d+$') 
 
+def get_int_env(name, default=0):
+    val = os.environ.get(name, default)
+    try:
+        return int(val) if val else default
+    except (ValueError, TypeError):
+        return default
+
 class Config(object):
     # pyro client config
-    API_ID    = os.environ.get("API_ID", 7414019)
-    API_HASH  = os.environ.get("API_HASH", "d463ed3d695f5cd4164029405ad8388e")
+    API_ID    = get_int_env("API_ID", 0)
+    API_HASH  = os.environ.get("API_HASH", "")
     BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
    
     # database config
-    DB_NAME = os.environ.get("DB_NAME","Zoro")
-    DB_URL  = os.environ.get("DB_URL","")
+    DB_NAME = os.environ.get("DB_NAME", "EdgeRenameBot")
+    DB_URL  = os.environ.get("DB_URL", "")
  
     # other configs
     BOT_UPTIME  = time.time()
-    START_PIC   = os.environ.get("START_PIC", "https://telegra.ph/file/0624f0e874718a066a3f6.mp4")
-    ADMIN       = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '1350488685 6294805935').split()]
-    FORCE_SUB_1 = os.environ.get("FORCE_SUB_1", "EdgeBotSupport")
-    FORCE_SUB_2 = os.environ.get("FORCE_SUB_2", "EdgeBots")
-    LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", -1001863937035))
-    DUMP_CHANNEL = int(os.environ.get("DUMP_CHANNEL", "-1002131803512"))
+    START_PIC   = os.environ.get("START_PIC", "")
+    ADMIN       = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '').split()] if os.environ.get('ADMIN') else []
+    FORCE_SUB_1 = os.environ.get("FORCE_SUB_1", "")
+    FORCE_SUB_2 = os.environ.get("FORCE_SUB_2", "")
+    LOG_CHANNEL = get_int_env("LOG_CHANNEL", 0)
+    DUMP_CHANNEL = get_int_env("DUMP_CHANNEL", 0)
 
-    # wes response configuration     
-    WEBHOOK = bool(os.environ.get("WEBHOOK", True))
+    # web response configuration     
+    WEBHOOK = os.environ.get("WEBHOOK", "True").lower() in ["true", "1", "yes"]
+    PORT = get_int_env("PORT", 8080)
 
 
 

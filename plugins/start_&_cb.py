@@ -44,6 +44,7 @@ async def start(client, message):
     user = message.from_user
     await db.add_user(client, message)
     button = InlineKeyboardMarkup([[
+        InlineKeyboardButton("⚙️ Sᴇᴛᴛɪɴɢꜱ", callback_data='settings'),
         InlineKeyboardButton("Hᴏᴡ ᴛᴏ Usᴇ", callback_data='help')
     ], [
         InlineKeyboardButton('Uᴩᴅᴀᴛᴇꜱ', url='https://t.me/EdgeBots'),
@@ -67,6 +68,7 @@ async def cb_handler(client, query: CallbackQuery):
             text=Txt.START_TXT.format(query.from_user.mention),
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("⚙️ Sᴇᴛᴛɪɴɢꜱ", callback_data='settings'),
                 InlineKeyboardButton("Hᴏᴡ ᴛᴏ Usᴇ", callback_data='help')
             ], [
                 InlineKeyboardButton('Uᴩᴅᴀᴛᴇꜱ', url='https://t.me/EdgeBots'),
@@ -76,6 +78,10 @@ async def cb_handler(client, query: CallbackQuery):
                 InlineKeyboardButton('Dᴏɴᴀᴛᴇ', callback_data='donate')
             ]])
         )
+    elif data == "settings":
+        from plugins.settings import build_settings_view
+        text, markup = await build_settings_view(query.from_user.id)
+        await query.message.edit_text(text=text, reply_markup=markup, disable_web_page_preview=True)
     elif data == "on_metadata":
         user_id = query.from_user.id
         await db.set_metadata(user_id, "On")
@@ -171,6 +177,7 @@ async def cb_handler(client, query: CallbackQuery):
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup([
                 [
+                    InlineKeyboardButton("⚙️ Sᴇᴛᴛɪɴɢꜱ", callback_data="settings"),
                     InlineKeyboardButton("Metadata", callback_data="metainfo"),
                 ],
                 [

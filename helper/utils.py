@@ -1,8 +1,39 @@
-import math, time
+import math, time, os, asyncio, uuid, shutil
+from pathlib import Path
 from datetime import datetime
 from pytz import timezone
 from config import Config, Txt 
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+def split_name_and_ext(filename: str) -> tuple:
+    """Safely split filename into stem and extension without assuming 3-char ext length."""
+    p = Path(filename)
+    suffix = p.suffix  # e.g. '.mkv', '.mp4', '.tar'
+    stem = p.stem
+    return stem, suffix
+
+def format_custom_filename(filename: str, prefix: str = None, suffix: str = None) -> str:
+    """Formats the filename applying prefix and suffix safely without mangling extensions."""
+    stem, ext = split_name_and_ext(filename)
+    parts = []
+    if prefix:
+        parts.append(prefix.strip())
+    parts.append(stem.strip())
+    if suffix:
+        parts.append(suffix.strip())
+    
+    formatted_name = " ".join(parts) + ext
+    return formatted_name
+
+async def run_async_ffmpeg(cmd: list) -> tuple:
+    """Executes FFmpeg non-blockingly inside the asyncio event loop."""
+    process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+    return process.returncode, stdout.decode('utf-8', errors='ignore'), stderr.decode('utf-8', errors='ignore')
 
 def convert_time(seconds):
     minutes, seconds = divmod(seconds, 60)
@@ -81,15 +112,14 @@ def convert(seconds):
     return "%d:%02d:%02d" % (hour, minutes, seconds)
 
 async def send_log(b, u):
-    if Config.LOG_CHANNEL is not None:
+    if Config.LOG_CHANNEL:
         curr = datetime.now(timezone("Asia/Kolkata"))
         date = curr.strftime('%d %B, %Y')
         time = curr.strftime('%I:%M:%S %p')
-        await b.send_message(
-            Config.LOG_CHANNEL,
-            f"**--Nᴇᴡ Uꜱᴇʀ Sᴛᴀʀᴛᴇᴅ Tʜᴇ Bᴏᴛ--**\n\nUꜱᴇʀ: {u.mention}\nIᴅ: `{u.id}`\nUɴ: @{u.username}\n\nDᴀᴛᴇ: {date}\nTɪᴍᴇ: {time}\n\nBy: {b.mention}"
-        )
-        
-
-
-
+        try:
+            await b.send_message(
+                Config.LOG_CHANNEL,
+                f"**--Nᴇᴡ Uꜱᴇʀ Sᴛᴀʀᴛᴇᴅ Tʜᴇ Bᴏᴛ--**\n\nUꜱᴇʀ: {u.mention}\nIᴅ: `{u.id}`\nUɴ: @{u.username}\n\nDᴀᴛᴇ: {date}\nTɪᴍᴇ: {time}\n\nBy: {b.mention}"
+            )
+        except:
+            pass

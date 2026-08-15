@@ -127,7 +127,7 @@ class Database:
 
     async def get_dump_channel(self, user_id):
         user = await self.col.find_one({'_id': int(user_id)})
-        return user.get('dump_channel', None)
+        return user.get('dump_channel', None) if user else None
 
     async def remove_dump_channel(self, user_id):
         await self.col.update_one(
@@ -135,5 +135,15 @@ class Database:
             {'$unset': {'dump_channel': ""}}
         )
 
+    async def get_user_data(self, user_id):
+        user = await self.col.find_one({'_id': int(user_id)})
+        return user or {}
+
+    async def get_upload_mode(self, user_id):
+        user = await self.col.find_one({'_id': int(user_id)})
+        return user.get('upload_mode', 'Ask') if user else 'Ask'
+
+    async def set_upload_mode(self, user_id, mode):
+        await self.col.update_one({'_id': int(user_id)}, {'$set': {'upload_mode': mode}})
 
 db = Database(Config.DB_URL, Config.DB_NAME)
