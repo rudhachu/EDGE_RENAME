@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from pytz import timezone
 from pyrogram import Client, __version__
@@ -5,6 +6,7 @@ from pyrogram.raw.all import layer
 from config import Config
 from aiohttp import web
 from route import web_server
+
 
 class Bot(Client):
 
@@ -21,25 +23,57 @@ class Bot(Client):
 
     async def start(self):
         await super().start()
+
         me = await self.get_me()
         self.mention = me.mention
-        self.username = me.username  
-        self.uptime = Config.BOT_UPTIME     
+        self.username = me.username
+        self.uptime = Config.BOT_UPTIME
+
         if Config.WEBHOOK:
             app = web.AppRunner(await web_server())
-            await app.setup()       
-            await web.TCPSite(app, "0.0.0.0", Config.PORT).start()     
+            await app.setup()
+            await web.TCPSite(
+                app, "0.0.0.0", Config.PORT
+            ).start()
+
         print(f"{me.first_name} ɪꜱ ꜱᴛᴀʀᴛᴇᴅ.....⚡️")
+
         for id in Config.ADMIN:
-            try: await self.send_message(id, f"**{me.first_name} ɪꜱ ꜱᴛᴀʀᴛᴇᴅ.....⚡️**")                                
-            except: pass
+            try:
+                await self.send_message(
+                    id,
+                    f"**{me.first_name} ɪꜱ ꜱᴛᴀʀᴛᴇᴅ.....⚡️**"
+                )
+            except:
+                pass
+
         if Config.LOG_CHANNEL:
             try:
                 curr = datetime.now(timezone("Asia/Kolkata"))
-                date = curr.strftime('%d %B, %Y')
-                time = curr.strftime('%I:%M:%S %p')
-                await self.send_message(Config.LOG_CHANNEL, f"**__{me.mention} Iꜱ Rᴇsᴛᴀʀᴛᴇᴅ !!**\n\n📅 Dᴀᴛᴇ : `{date}`\n⏰ Tɪᴍᴇ : `{time}`\n🌐 Tɪᴍᴇᴢᴏɴᴇ : `Asia/Kolkata`\n\n🉐 Vᴇʀsɪᴏɴ : `v{__version__} (Layer {layer})`</b>")                                
+                date = curr.strftime("%d %B, %Y")
+                time = curr.strftime("%I:%M:%S %p")
+
+                await self.send_message(
+                    Config.LOG_CHANNEL,
+                    f"**__{me.mention} Iꜱ Rᴇsᴛᴀʀᴛᴇᴅ !!__**\n\n"
+                    f"📅 Dᴀᴛᴇ : `{date}`\n"
+                    f"⏰ Tɪᴍᴇ : `{time}`\n"
+                    f"🌐 Tɪᴍᴇᴢᴏɴᴇ : `Asia/Kolkata`\n\n"
+                    f"🉐 Vᴇʀsɪᴏɴ : `v{__version__} (Layer {layer})`"
+                )
             except:
                 print("Pʟᴇᴀꜱᴇ Mᴀᴋᴇ Tʜɪꜱ Iꜱ Aᴅᴍɪɴ Iɴ Yᴏᴜʀ Lᴏɢ Cʜᴀɴɴᴇʟ")
 
-Bot().run()
+
+async def main():
+    bot = Bot()
+    await bot.start()
+
+    try:
+        await asyncio.Event().wait()
+    finally:
+        await bot.stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
